@@ -1,18 +1,17 @@
-from adafruit_ble.advertising import to_bytes_literal
 from kivy.app import App
 from kivy.lang import Builder
 from kivy.clock import Clock
 from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.uix.screenmanager import ScreenManager, Screen
-import time
-from adafruit_ble import BLERadio
-import binascii
 from kivy_garden.graph import Graph, MeshLinePlot
-from kivy.uix.modalview import ModalView
 from kivy.uix.scrollview import ScrollView
 from kivy.uix.gridlayout import GridLayout
 from kivy.core.window import Window
+import decodeData
+import bletooth
+import graphs
+from kivy.uix.boxlayout import BoxLayout
 
 Builder.load_string("""
 <HomeScreen>:
@@ -62,103 +61,87 @@ Builder.load_string("""
 <HistoryReadingsScreen>:
 
         on_enter:
-                root.on_enter()
+                root.build()
        
                
 """)
 
-
 class HomeScreen(Screen):
 
     def getAndWrite(self, dt):
-        ble = bletooth()
+        ble = bletooth.bletooth()
         ble.scanForBle()
         self.uuid = ble.getAdvertisement()
-        self.decode_data()
-        self.writeToFile()
+        decoder = decodeData.decodeAndWriteData(self.uuid)
+        decoder.decodeData(self.uuid)
+        self.uuidList = decoder.getData()
+        decoder.writeToFile()
 
     def start(self):
-        Clock.schedule_interval(self.getAndWrite, 600)
+        Clock.schedule_interval(self.getAndWrite, 1000)
 
-    def decode_data(self):
-        uuidDecoded = self.uuid.decode()
-        uuid = []
-        for i in range(len(uuidDecoded)):
-            try:
-                int(uuidDecoded[i])
-                uuid.append(uuidDecoded[i])
-
-            except:
-                if uuidDecoded[i] == 'a':
-                    uuid.append(10)
-                elif uuidDecoded[i] == 'b':
-                    uuid.append(11)
-                elif uuidDecoded[i] == 'c':
-                    uuid.append(12)
-                elif uuidDecoded == 'd':
-                    uuid.append(13)
-                elif uuidDecoded == 'e':
-                    uuid.append(14)
-                else:
-                    uuid.append(15)
-
-        self.outsideTemp = int(uuid[0])*16 + int(uuid[1])
-        self.humidity = int(uuid[2])*16+int(uuid[3])
-        self.moistureLevel = int(uuid[4])*16+int(uuid[5])
-        self.battVoltage = int(uuid[6])*16+int(uuid[7])
-        self.lightLevel = int(uuid[8])*16+int(uuid[9])
-        self.picoTemp = int(uuid[10])*16+int(uuid[11])
-        self.rainEvents = int(uuid[12])*16+int(uuid[13])
-
-
-    def writeToFile(self):
-        readingsFile = open("HistoricalReadings.txt", 'a')
-        readTime = time.asctime()
-        readingsFile.write(readTime + "\t")
-        readingsFile.write(str(self.outsideTemp) + "\t\t\t\t\t\t\t")  # 'Outside Temperature: ' +
-        readingsFile.write(str(self.humidity) + "\t\t\t\t")  # 'Humidity:  ' +
-        readingsFile.write(str(self.moistureLevel) + "\t\t\t\t\t\t\t")  # 'Soil Moisture Level: ' +
-        readingsFile.write(str(self.battVoltage) + "\t\t\t\t\t")  # 'Battery Voltage: ' +
-        readingsFile.write(str(self.lightLevel) + "\t\t\t\t\t")  # 'Light Level: ' +
-        readingsFile.write(str(self.picoTemp) + "\t\t\t\t\t\t")  # 'PICO Temperature: ' +
-        readingsFile.write(str(self.rainEvents) + "\n")  # 'Rain Events: ' +
-        readingsFile.close()
 
 
 class HistoryReadingsScreen(Screen): ##THIS IS THE GRAPH ISSUE
-    def on_enter(self):
+    def build(self): #was on_enter
         self.read_file()
+        titleLabel = Label(text="Historical Readings", font_size=24,
+                           pos_hint={'x': 0, 'top': 1})  ##this isn't positioned correctly
+        self.add_widget(titleLabel)
+        homeBtn = Button(text="Home", size_hint=(0.1, 0.1), pos_hint={'x': 0, 'top': .95})
+        homeBtn.bind(on_press=self.goHome)
+        self.add_widget(homeBtn)
 
-        layout = GridLayout(cols=1, padding=10, spacing=20,
-                            size_hint=(None, None), width=672)
+        layout = GridLayout(cols=1, size_hint_y = None) #padding=10, spacing=20,
+                            #size_hint=(None, None), width=672)
 
         layout.bind(minimum_height=layout.setter('height'))
 
-        titleLabel = Label(text="Historical Readings", font_size=24, pos_hint={'x': 0, 'top': .95}) ##this isn't positioned correctly
-        self.add_widget(titleLabel)
+        root = ScrollView(size_hint=(1, None), size=(Window.width, Window.height), scroll_distance = Window.height)
+                          #pos_hint={'center_x': .5, 'center_y': .5}, do_scroll_x=False)
 
+        box1 = BoxLayout(size_hint = (None, None), size = (Window.width, Window.height))
+        box1.add_widget(self.tempGraph())
+        layout.add_widget(box1)
 
-        # create a scroll view, with a size < size of the grid
-        root = ScrollView(size_hint=(None, None), size=(670, 416),
-                          pos_hint={'center_x': .5, 'center_y': .5}, do_scroll_x=False)
+        box2 = BoxLayout(size_hint = (None, None), size = (Window.width, Window.height))
 
-        homeBtn = Button(text = "Home", size_hint=(0.1, 0.1), pos_hint={'x':0, 'top': .95} )
-        homeBtn.bind(on_press = self.goHome)
-        self.add_widget(homeBtn)
+        box2.add_widget(self.humidGraph())
+        layout.add_widget(box2)
 
-        Graphs = [self.tempGraph(), self.humidGraph(), self.moistureGraph(), self.lightGraph(), self.batteryGraph(), self.picoGraph(), self.rainGraph()]
+        box3 = BoxLayout(size_hint=(None, None), size=(Window.width, Window.height))
+        box3.add_widget(self.moistureGraph())
+        layout.add_widget(box3)
 
+        box4 = BoxLayout(size_hint=(None, None), size=(Window.width, Window.height))
+        box4.add_widget(self.lightGraph())
+        layout.add_widget(box4)
 
-#PI IS 4.33in (416 pixels) height by 7" wide (672 pixels)
-        for i in range(len(Graphs)):
-            #view = ModalView(size_hint=(1,1))
-            graph = Graphs[i]
-            #view.add_widget(graph)
-            #layout.add_widget(view)
-            layout.add_widget(graph)
+        box5 = BoxLayout(size_hint=(None, None), size=(Window.width, Window.height))
+        box5.add_widget(self.rainGraph())
+        layout.add_widget(box5)
 
+        box6= BoxLayout(size_hint=(None, None), size=(Window.width, Window.height))
+        box6.add_widget(self.picoGraph())
+        layout.add_widget(box6)
+
+        box7 = BoxLayout(size_hint=(None, None), size=(Window.width, Window.height))
+        box7.add_widget(self.batteryGraph())
+        layout.add_widget(box7)
+        
         root.add_widget(layout)
+
         self.add_widget(root)
+        #Graphs = [self.tempGraph(), self.humidGraph(), self.moistureGraph(), self.lightGraph(), self.batteryGraph(), self.picoGraph(), self.rainGraph()]
+#PI IS 4.33in (416 pixels) height by 7" wide (672 pixels)
+        # for i in range(len(Graphs)):
+        #     #view = ModalView(size_hint=(1,1))
+        #     graph = Graphs[i]
+        #     #view.add_widget(graph)
+        #     #layout.add_widget(view)
+        #     layout.add_widget(graph)
+
+
 
     def goHome(self, *args):
         self.manager.current = 'Home'
@@ -294,120 +277,42 @@ class HistoryReadingsScreen(Screen): ##THIS IS THE GRAPH ISSUE
 
         return graph
 
-
 class CurrentReadingsScreen(Screen):
     def pre_enter(self):
-        ble = bletooth()
+        ble = bletooth.bletooth() ##scanning twice and saving to file twice...
         ble.scanForBle()
         self.uuid = ble.getAdvertisement()
 
 
     def on_entered(self):
         print("scan done")
-        self.decode_data()
+        decoder = decodeData.decodeAndWriteData(self.uuid)
+        decoder.decodeData(self.uuid)
+        self.uuidList = decoder.getData()
+        decoder.writeToFile()
         self.displayCurrentReadings()
-        self.writeToFile()
-
-
-    def decode_data(self):
-        uuidDecoded = self.uuid.decode()
-        uuid = []
-        for i in range(len(uuidDecoded)):
-            try:
-                int(uuidDecoded[i])
-                uuid.append(uuidDecoded[i])
-
-            except:
-                if uuidDecoded[i] == 'a':
-                    uuid.append(10)
-                elif uuidDecoded[i] == 'b':
-                    uuid.append(11)
-                elif uuidDecoded[i] == 'c':
-                    uuid.append(12)
-                elif uuidDecoded == 'd':
-                    uuid.append(13)
-                elif uuidDecoded == 'e':
-                    uuid.append(14)
-                else:
-                    uuid.append(15)
-
-        self.outsideTemp = int(uuid[0])*16 + int(uuid[1])
-        self.humidity = int(uuid[2])*16+int(uuid[3])
-        self.moistureLevel = int(uuid[4])*16+int(uuid[5])
-        self.battVoltage = int(uuid[6])*16+int(uuid[7])
-        self.lightLevel = int(uuid[8])*16+int(uuid[9])
-        self.picoTemp = int(uuid[10])*16+int(uuid[11])
-        self.rainEvents = int(uuid[12])*16+int(uuid[13])
-
-    def writeToFile(self):
-        readingsFile = open("HistoricalReadings.txt", 'a')
-        readTime = time.asctime()
-        readingsFile.write(readTime + "\t")
-        readingsFile.write(str(self.outsideTemp) + "\t\t\t\t\t\t\t")
-        readingsFile.write(str(self.humidity) + "\t\t\t\t")
-        readingsFile.write(str(self.moistureLevel) + "\t\t\t\t\t\t\t")
-        readingsFile.write(str(self.battVoltage) + "\t\t\t\t\t")
-        readingsFile.write(str(self.lightLevel) + "\t\t\t\t\t")
-        readingsFile.write(str(self.picoTemp) + "\t\t\t\t\t\t")
-        readingsFile.write(str(self.rainEvents) + "\n")
-        readingsFile.close()
 
     def displayCurrentReadings(self): ##LAYOUT NOT IN CORRECT POSITION
         layout = GridLayout(cols=2, padding = 1, spacing=4,
                             size_hint=(None, None), width=500, rows = 7, orientation = 'lr-tb')
 
-        tempLabel = Label(text = "Outside Temperature: " + str(self.outsideTemp))
+        tempLabel = Label(text = "Outside Temperature: " + str(self.uuidList[0]))
         layout.add_widget(tempLabel)
-        humidLabel = Label(text = "Humidity: " + str(self.humidity) + '%')
+        humidLabel = Label(text = "Humidity: " + str(self.uuidList[1]) + '%')
         layout.add_widget(humidLabel)
-        moistureLabel = Label(text = "Soil Moisture: " + str(self.moistureLevel))
+        moistureLabel = Label(text = "Soil Moisture: " + str(self.uuidList[2]))
         layout.add_widget(moistureLabel)
 
-        battLabel = Label(text = 'Battery Voltage: ' + str(self.battVoltage))
+        battLabel = Label(text = 'Battery Voltage: ' + str(self.uuidList[3]))
         layout.add_widget(battLabel)
-        lightLabel = Label(text = 'Light Level: ' + str(self.lightLevel))
+        lightLabel = Label(text = 'Light Level: ' + str(self.uuidList[4]))
         layout.add_widget(lightLabel)
-        picoLabel = Label(text = 'Pico Temperature: ' + str(self.picoTemp))
+        picoLabel = Label(text = 'Pico Temperature: ' + str(self.uuidList[5]))
         layout.add_widget(picoLabel)
-        rainLabel = Label(text = 'Rain Events: ' + str(self.rainEvents))
+        rainLabel = Label(text = 'Rain Events: ' + str(self.uuidList[6]))
         layout.add_widget(rainLabel)
 
         self.add_widget(layout)
-
-class bletooth():
-    def scanForBle(self):
-        ble = BLERadio()
-        print("scanning")
-        found = set()
-
-        self.byteList = []
-        scan_responses = set()
-        for advertisement in ble.start_scan():
-            self.byteList.append(bytes(advertisement))
-            addr = advertisement.address
-            if advertisement.scan_response and addr not in scan_responses:
-                scan_responses.add(addr)
-            elif not advertisement.scan_response and addr not in found:
-                found.add(addr)
-                found.add(advertisement)
-            else:
-                continue
-            print()
-            ble.stop_scan()
-
-    def getAdvertisement(self):
-        for adBytes in self.byteList:
-
-            print()
-            print()
-            if len(adBytes) == 39:
-                self.targetBytes = binascii.b2a_hex(adBytes)
-                break
-        print("target: ", self.targetBytes)
-        bArray = bytearray(self.targetBytes)
-        self.uuid = bArray[12:44]
-        return self.uuid
-
 
 
 
