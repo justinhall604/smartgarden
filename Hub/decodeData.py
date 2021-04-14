@@ -29,16 +29,16 @@ class decodeAndWriteData(bytearray):
                 else:
                     uuid.append(15)
 
-        #self.packetType = int(uuid[0]) * 16 + int(uuid[1])
+
         self.battVoltage = int(uuid[0]) * 16 + int(uuid[1])#
         self.humidity = int(uuid[2]) * 16 + int(uuid[3])#
         self.moistureLevel = int(uuid[4]) * 16 + int(uuid[5])#
         self.outsideTemp = int(uuid[6]) * 16 + int(uuid[7])#
         self.picoTemp = int(uuid[8]) * 16 + int(uuid[9])#
         self.lightLevel = int(uuid[10])*16 + int(uuid[11])
-        self.rainEvents = int(uuid[12]) * 16 + int(uuid[13]) # %>0
+        self.rainEventsGreater0 = int(uuid[12]) * 16 + int(uuid[13]) # %>0
         self.rainEventsLess0 = int(uuid[14] * 16 + int(uuid[15])) # %<0
-
+        self.rainEvents = self.rainEvents + (self.rainEventsLess0 * 0.01)
 
         if self.battVoltage <= 140:
             popup = Popup(title = 'uh oh', content = Label(text = 'Low Battery'), size_hint = (None, None), size = (400,200))
@@ -53,7 +53,7 @@ class decodeAndWriteData(bytearray):
         self.dataList.append(self.picoTemp)
         self.dataList.append(self.lightLevel)
         self.dataList.append(self.rainEvents)
-        self.dataList.append(self.rainEventsLess0)
+
 
         ##notify user if there is a data issue
         # if self.dataList[0] > 120:

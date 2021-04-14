@@ -1,12 +1,9 @@
-from adafruit_ble import BLERadio
 import binascii
 from kivy.uix.popup import Popup
 from kivy.uix.label import Label
 from adafruit_ble.advertising import Advertisement
 from adafruit_ble import BLERadio
 from adafruit_ble.advertising.standard import ProvideServicesAdvertisement
-from adafruit_ble.advertising.standard import ServiceData
-from adafruit_ble.characteristics import StructCharacteristic
 
 class bletooth():
     def scanForBle(self):
@@ -20,34 +17,21 @@ class bletooth():
         self.byteList = []
         self.macList = []
         self.rssiList = []
-
+        self.nameList = []
         scan_responses = set()
         for advertisement in ble.start_scan(ProvideServicesAdvertisement, Advertisement):
             self.byteList.append(bytes(advertisement))
-            print(len(advertisement))
-            #print(advertisement.raw_data)
             addr = advertisement.address
             self.macList.append(addr)
             self.rssiList.append(advertisement.rssi)
-            #print(type(advertisement))
-            print(advertisement)
-            print(type(advertisement.address))
-            #print("ad: " , advertisement)
+            self.nameList.append(advertisement.complete_name)
             print("Complete name: " , advertisement.complete_name)
 
             print("mac: ", addr)
-            print("rssi ", advertisement.rssi)
-            print(addr, advertisement)
-            print("\t" + repr(advertisement))
-            print("String{}" , str(advertisement))
-            print("Bytes{}", bytes(advertisement))
-            #if advertisement.address == "Address(string='A5:A5:A5:A5:A5:A5')":
-               # print("here")
-                #print(advertisement)
 
-               # print("string: " , str(advertisement))
-               # ble.stop_scan()
-            #print(advertisement.name)
+            print("\t" + repr(advertisement))
+            print("length ", len(advertisement))
+            print()
             if advertisement.scan_response and addr not in scan_responses:
                 scan_responses.add(addr)
                 #print("Addr: ", addr)
@@ -57,28 +41,26 @@ class bletooth():
                 found.add(advertisement)
             else:
                 continue
+            if advertisement.complete_name == "Garden":
+                ble.stop_scan()
+
             print()
-
-
-
-            #ble.stop_scan()
 
     def getAdvertisement(self):
         #try:
         i = 0
+        j = 0
         for adBytes in self.byteList:
             print(adBytes)
             print()
             print()
-            if len(adBytes) == 24:#27:
-                self.targetButes = adBytes
+            if len(adBytes) == 13 and self.nameList[j] == "Garden":# and self.:#27:
                 self.targetBytes = binascii.b2a_hex(adBytes)
                 self.address = self.macList[i]
                 self.rssi = self.rssiList[i]
-
-                #print("MAC: ", self.address)
                 break
             i = i+1
+            j = j+1
 
         if self.rssi <= -80:
             popup = Popup(title='Uh oh',
@@ -87,10 +69,10 @@ class bletooth():
             popup.open()
             return False
 
-        print("not bytes: " , self.targetButes)
         print("target: ", self.targetBytes)
         bArray = bytearray(self.targetBytes)
-        self.uuid = bArray[12:44]
+        self.uuid = bArray[5:12]
+
         return self.uuid
         # except:
         #     popup = Popup(title='Uh oh',
