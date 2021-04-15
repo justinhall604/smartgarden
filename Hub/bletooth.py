@@ -20,6 +20,7 @@ class bletooth():
         self.nameList = []
         scan_responses = set()
         for advertisement in ble.start_scan(ProvideServicesAdvertisement, Advertisement):
+
             self.byteList.append(bytes(advertisement))
             addr = advertisement.address
             self.macList.append(addr)
@@ -32,6 +33,8 @@ class bletooth():
             print("\t" + repr(advertisement))
             print("length ", len(advertisement))
             print()
+
+
             if advertisement.scan_response and addr not in scan_responses:
                 scan_responses.add(addr)
                 #print("Addr: ", addr)
@@ -41,26 +44,28 @@ class bletooth():
                 found.add(advertisement)
             else:
                 continue
-            if advertisement.complete_name == "Garden":
-                ble.stop_scan()
+            if str(advertisement.address) == 'Address(string="a5:a5:a5:a5:a5:a5")':
+                print("SUCCESS")
+                #ble.stop_scan()
+                break
 
-            print()
+        ble.stop_scan()
+        print()
 
     def getAdvertisement(self):
         #try:
+        print("HI")
         i = 0
-        j = 0
         for adBytes in self.byteList:
             print(adBytes)
             print()
             print()
-            if len(adBytes) == 13 and self.nameList[j] == "Garden":# and self.:#27:
+            if len(adBytes) == 13 and str(self.macList[i]) == 'Address(string="a5:a5:a5:a5:a5:a5")':# and self.:#27:
                 self.targetBytes = binascii.b2a_hex(adBytes)
                 self.address = self.macList[i]
                 self.rssi = self.rssiList[i]
                 break
             i = i+1
-            j = j+1
 
         if self.rssi <= -80:
             popup = Popup(title='Uh oh',
@@ -71,7 +76,8 @@ class bletooth():
 
         print("target: ", self.targetBytes)
         bArray = bytearray(self.targetBytes)
-        self.uuid = bArray[5:12]
+        self.uuid = bArray[10:26]
+        print("UUID: ", self.uuid)
 
         return self.uuid
         # except:

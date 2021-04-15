@@ -1,3 +1,8 @@
+'''
+__author__ = Kirsten Hernquist
+__copyright__ = Attribution-NonCommercial-NoDerivs CC-BY-NC-ND 2021 Kirsten Hernquist and Justin Hall"
+__version__ = "1.0"
+'''
 from kivy.config import Config
 
 # 0 being off 1 being on as in true / false
@@ -165,7 +170,7 @@ class SettingsScreen(Screen):
         f.close()
 
         readingsFile = open('HistoricalReadings.csv', "w")
-        readingsFile.write('Date, Time, Battery Level, MAC Address, RSSI, Packet Type, Humidity, Soil Moisture, Outside Temperature, PICO Temperature, Rain Events, Light Level, Overrun')
+        readingsFile.write('Date,Time, MAC Address, RSSI, Humidity, Soil Moisture, Outside Temperature, PICO Temperature, Rain Events, Light Level, Battery Level, Overrun,')
 
 class HomeScreen(Screen):
     def on_entered(self):
@@ -184,9 +189,11 @@ class HomeScreen(Screen):
             newMac = self.mac.replace('Address(string="', '')
             self.newestMac = newMac.replace('")', '')
             self.rssi = str(ble.getRssi())
+            print("mac: ", self.newestMac, "rssi: ", self.rssi, "uuid: " , self.uuid)
             decoder = decodeData.decodeAndWriteData(self.uuid)
             decoder.decodeData(self.uuid)
             self.uuidList = decoder.getData()
+            print("uuid list: " , self.uuidList)
             decoder.writeToFile(self.newestMac, self.rssi)
         except:
                 popup = Popup(title='Uh oh',
@@ -194,7 +201,7 @@ class HomeScreen(Screen):
                     size_hint=(None, None), size=(200, 200))
                 popup.open()
     def start(self):
-        Clock.schedule_interval(self.getAndWrite, 30)
+        Clock.schedule_interval(self.getAndWrite, 55)
 
 class HistoryReadingsScreen(Screen):
     def build(self):
@@ -255,7 +262,7 @@ class HistoryReadingsScreen(Screen):
         tempY =[]
 
         for i in range(len(self.fileData) - 19, len(self.fileData)):
-            tempY.append(str(math.floor((float(self.fileData[i][6]) * 100) / 255)))
+            tempY.append(str(math.floor((float(self.fileData[i][6])))))
 
         plot = None
         graph = Graph(size_hint = (.5,.8), ylabel='Outside Temperature (C)', xlabel = 'Time', x_ticks_major = 1, y_ticks_minor = 1, y_ticks_major = 1,
@@ -272,7 +279,7 @@ class HistoryReadingsScreen(Screen):
         humidY = []
 
         for i in range(len(self.fileData) - 19, len(self.fileData)):
-            humidY.append(str(math.floor((float(self.fileData[i][4]) * 100) / 255)))
+            humidY.append(str(math.floor((float(self.fileData[i][4])))))
 
         humidityPlot = None
         humidityGraph = Graph(size_hint = (0.5,0.8), pos_hint = {'x': .24, 'y': 0}, ylabel='% Humidity', xlabel='Time', x_ticks_major=1, y_ticks_minor=1, y_ticks_major=1,
@@ -288,7 +295,7 @@ class HistoryReadingsScreen(Screen):
     def moistureGraph(self):
         moistY = []
         for i in range(len(self.fileData) - 19, len(self.fileData)):
-            moistY.append(str(math.floor((float(self.fileData[i][5]) * 100) / 255)))
+            moistY.append(str(math.floor((float(self.fileData[i][5])))))
 
         plot = None
         graph = Graph(size_hint = (0.5,0.8), pos_hint = {'x': .24, 'y': 0}, ylabel='% Moisture Level', xlabel='Time', x_ticks_major=1, y_ticks_minor=1,
@@ -305,7 +312,7 @@ class HistoryReadingsScreen(Screen):
     def batteryGraph(self):
         battY = []
         for i in range(len(self.fileData) - 19, len(self.fileData)):
-            battY.append(str(math.floor((float(self.fileData[i][2]) * 100) / 255)))
+            battY.append(str(math.floor((float(self.fileData[i][10])))))
 
         plot = None
         graph = Graph(size_hint = (0.5,0.8), pos_hint = {'x': .24, 'y': 0}, ylabel='% Battery Level', xlabel='Time', x_ticks_major=1, y_ticks_minor=1,
@@ -322,7 +329,7 @@ class HistoryReadingsScreen(Screen):
     def lightGraph(self):
         lightY = []
         for i in range(len(self.fileData) - 19, len(self.fileData)):
-            lightY.append(str(math.floor((float(self.fileData[i][9]) * 100) / 255)))
+            lightY.append(str(math.floor((float(self.fileData[i][9])))))
 
         plot = None
         graph = Graph(size_hint = (0.5,0.8), pos_hint = {'x': .24, 'y': 0}, ylabel='% Light Level', xlabel='Time', x_ticks_major=1, y_ticks_minor=1,
@@ -339,7 +346,7 @@ class HistoryReadingsScreen(Screen):
     def picoGraph(self):
         picoY = []
         for i in range(len(self.fileData) - 19, len(self.fileData)):
-            picoY.append(str(math.floor((float(self.fileData[i][7]) * 100) / 255)))
+            picoY.append(str(math.floor((float(self.fileData[i][7])))))
 
         plot = None
         graph = Graph(size_hint = (0.5,0.8), pos_hint = {'x': .24, 'y': 0}, ylabel='Pico Temperature (C)', xlabel='Time', x_ticks_major=1, y_ticks_minor=1,
@@ -356,7 +363,7 @@ class HistoryReadingsScreen(Screen):
     def rainGraph(self):
         rainY = []
         for i in range(len(self.fileData) - 19, len(self.fileData)):
-            rainY.append(str(math.floor((float(self.fileData[i][8]) * 100) / 255)))
+            rainY.append(str(math.floor((float(self.fileData[i][8])))))
         plot = None
         graph = Graph(size_hint = (0.5,0.8), pos_hint = {'x': .24, 'y': 0}, ylabel='Rain Events', xlabel='Time', x_ticks_major=1, y_ticks_minor=1,
                       y_ticks_major=1,
@@ -402,16 +409,16 @@ class CurrentReadingsScreen(Screen):
                 if TEMP_MODE == 'F':
                     uncalculatedoTemp = (math.floor(float(self.data[6])*1.8) + 32)
                     uncalculatedpTemp = (math.floor(float(self.data[7])*1.8) + 32)
-                    oTemp = math.floor((float(uncalculatedoTemp * 100) / 255))
-                    pTemp = math.floor((float(uncalculatedpTemp * 100) / 255))
+                    oTemp = math.floor((float(uncalculatedoTemp)))
+                    pTemp = math.floor((float(uncalculatedpTemp)))
                     self.tempLabel = Label(text = "Outside Temperature: " + str(oTemp) + u'\N{DEGREE SIGN}' + 'F', font_size = 18)
                     layout.add_widget(self.tempLabel)
                     self.picoLabel = Label(text='Pico Temperature: ' + str(pTemp) + u'\N{DEGREE SIGN}' + 'F', font_size=18)
                     layout.add_widget(self.picoLabel)
 
                 elif TEMP_MODE == 'C':
-                    oTemp = (math.floor((float(self.data[6]) * 100) / 255))
-                    pTemp = (math.floor((float(self.data[7]) * 100) / 255))
+                    oTemp = (math.floor((float(self.data[6]))))
+                    pTemp = (math.floor((float(self.data[7]))))
                     self.tempLabel = Label(text="Outside Temperature: " + str(oTemp) + u'\N{DEGREE SIGN}' + 'C',
                                       font_size=18, color = [1,1,1,1] )#str(self.uuidList[0])
                     layout.add_widget(self.tempLabel)
@@ -419,22 +426,22 @@ class CurrentReadingsScreen(Screen):
                                       font_size=18, color = [1,1,1,1] )
                     layout.add_widget(self.picoLabel)
 
-                humidLabel = Label(text = "Humidity: " + str(math.floor((float(self.data[4]) * 100) / 255)) + '%', font_size = 18)
+                humidLabel = Label(text = "Humidity: " + str(math.floor((float(self.data[4])))) + '%', font_size = 18)
                 layout.add_widget(humidLabel)
 
-                moistureLabel = Label(text = "Soil Moisture: " + str(math.floor((float(self.data[5]) * 100) / 255)) + '%', font_size = 18)
+                moistureLabel = Label(text = "Soil Moisture: " + str(math.floor((float(self.data[5])))) + '%', font_size = 18)
                 layout.add_widget(moistureLabel)
 
-                battLabel = Label(text = 'Battery Voltage: ' , font_size = 18)#+ str(math.floor((float(self.data[2]) * 100) / 255)) + '%', font_size = 18)
+                battLabel = Label(text = 'Battery Voltage: '+ str(math.floor((float(self.data[10])))) + '%' , font_size = 18) #+ str(math.floor((float(self.data[10]) * 100) / 255)) + '%', font_size = 18)
                 layout.add_widget(battLabel)
 
-                rainLabel = Label(text = 'Rain Events: ' + str(math.floor((float(self.data[8]) * 100) / 255)), font_size = 18)
+                rainLabel = Label(text = 'Rain Events: ' + str(math.floor((float(self.data[8])))) + '%', font_size = 18)
                 layout.add_widget(rainLabel)
 
                 rssiLabel = Label(text = "RSSI: " +  self.data[3], font_size = 18)
                 layout.add_widget(rssiLabel)
 
-                lightLabel = Label(text = "Light Level: " + str(math.floor((float(self.data[9]) * 100) / 255)) + '%', font_size = 18)
+                lightLabel = Label(text = "Light Level: " + str(math.floor((float(self.data[9])))) + '%', font_size = 18)
                 layout.add_widget(lightLabel)
                 print(self.data[11])
 

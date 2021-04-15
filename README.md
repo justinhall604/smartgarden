@@ -1,10 +1,15 @@
 # smartgarden
 Collects enviromental information using low powered sensors and ble beacon technology. Stores on a Raspberry Pi and let a user view information and graphs using a touch screen and graphical interface.
 Smart Garden version 1.0 03/07/2021
+
+__author__ = Kirsten Hernquist & Justin Hall
+__copyright__ = Attribution-NonCommercial-NoDerivs CC-BY-NC-ND 2021 Kirsten Hernquist and Justin Hall"
+__version__ = "1.0"
+
 -----------------------------------------------------------------------------
 General Usage Notes:
 - All libraries are supported on Windows, Mac, and Linux OS (HOWEVER there have been issues downloading adafruit-circuitpython and adafruit-blinka-bleio on any OS apart from Raspbian)
-- Thus, to test the program, your environment simply needs four files in the same package: a txt file, "HistoricalReadings.tcsv", "HomePage.py", "decodeData.py", and "bletooth.py". 
+- Thus, to test the program, your environment simply needs four files in the same package: a txt file, "HistoricalReadings.csv", "HomePage.py", "decodeData.py", and "bletooth.py". 
 - You will also need an active BLE device with a 16-bit UUID.
 - Currently, the timer is set to record data every 10 minutes. In order to change this, go to the HomeScreen class, line 81, and change "600" to 
 whatever interval you want (in seconds).
@@ -33,7 +38,6 @@ import time
 Required Libraries to import for bletooth.py:
 from adafruit_ble import BLERadio (must install adafruit-circuitpython-ble and adafruit-blinka-bleio)
 import binascii
-
 
 Image credits:
 "daisy wallpaper" by .robbie is licensed under CC BY-SA 2.0
